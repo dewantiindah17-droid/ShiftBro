@@ -1,0 +1,1442 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ShiftBro — Sistem Absensi & Operasional Shift Kafe</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary-navy: #0F2A43;
+      --navy-soft: #1E3E5C;
+      --teal-accent: #2C9B8A;
+      --amber-accent: #F2A33A;
+      --bg-warm: #F4F2EA;
+      --border-line: #E4E1D6;
+    }
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      background-color: var(--bg-warm);
+      color: #111827;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .touch-target {
+      min-height: 44px;
+      min-width: 44px;
+    }
+    .touch-press:active {
+      transform: scale(0.97);
+    }
+
+    /* Animasi Maskot Bro */
+    @keyframes mascotWave {
+      0%, 100% { transform: rotate(0deg); }
+      25% { transform: rotate(20deg); }
+      75% { transform: rotate(-10deg); }
+    }
+    @keyframes mascotBob {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-8px); }
+    }
+    @keyframes mascotSteam {
+      0% { opacity: 0.2; transform: translateY(0px) scale(0.9); }
+      50% { opacity: 0.8; transform: translateY(-8px) scale(1.1); }
+      100% { opacity: 0.1; transform: translateY(-16px) scale(1.2); }
+    }
+    .animate-mascot-wave {
+      transform-origin: 35px 85px;
+      animation: mascotWave 1.4s ease-in-out infinite;
+    }
+    .animate-mascot-bob {
+      animation: mascotBob 3s ease-in-out infinite;
+    }
+    .animate-mascot-steam-1 {
+      animation: mascotSteam 2.2s ease-in-out infinite;
+    }
+    .animate-mascot-steam-2 {
+      animation: mascotSteam 2.6s ease-in-out 0.8s infinite;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col bg-[#F4F2EA] text-[#111827] antialiased">
+
+  <!-- TOPBAR GLOBAL -->
+  <header class="sticky top-0 z-40 bg-[#0F2A43] text-white shadow-md border-b border-[#1E3E5C]">
+    <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+      <div onclick="navigateTo('screen-portal')" class="flex items-center gap-2.5 cursor-pointer">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-[#2C9B8A] to-[#1E3E5C] flex items-center justify-center font-bold text-white shadow-xs">
+          <svg class="w-5 h-5 text-[#F2A33A]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </div>
+        <div>
+          <span class="text-xl font-black tracking-tight text-white block leading-none">
+            ShiftBr<span class="text-[#F2A33A]">o</span>
+          </span>
+          <span class="text-[10px] text-slate-300 font-medium">Sistem Operasional Shift Kafe</span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <button id="btn-header-logout" onclick="handleLogout()" class="hidden px-3 py-1.5 rounded-xl bg-[#1E3E5C] hover:bg-white/10 text-xs font-bold text-white border border-[#2C6079] transition-colors flex items-center gap-1.5">
+          <span>Ganti Peran / Keluar</span>
+        </button>
+
+        <!-- Status Paket Premium Toggle -->
+        <button onclick="togglePlan()" class="flex items-center gap-1.5 text-xs text-slate-200 bg-[#1E3E5C] px-3 py-1.5 rounded-xl border border-[#2C6079]/50 hover:bg-[#2C6079] transition-colors">
+          <span id="plan-badge-dot" class="w-2 h-2 rounded-full bg-[#F2A33A] animate-pulse"></span>
+          <span id="plan-badge-text" class="font-semibold">Paket Premium (Rp25rb/bln)</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- TOAST NOTIFIKASI -->
+  <div id="toast-notif" class="fixed bottom-6 right-6 z-50 transform translate-y-16 opacity-0 transition-all duration-300 pointer-events-none max-w-sm">
+    <div class="bg-[#0F2A43] text-white p-4 rounded-2xl shadow-2xl border border-[#2C9B8A] flex items-start gap-3">
+      <div class="w-7 h-7 rounded-full bg-[#2C9B8A]/20 text-[#2C9B8A] flex items-center justify-center shrink-0 mt-0.5 font-bold">
+        ✓
+      </div>
+      <div>
+        <h5 id="toast-title" class="text-xs font-bold text-white leading-tight">Sukses</h5>
+        <p id="toast-desc" class="text-[11px] text-slate-300 mt-0.5 leading-snug">Operasi berhasil dilakukan.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTAINER UTAMA -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 flex flex-col items-center justify-center">
+
+    <!-- ========================================== -->
+    <!-- 1. HALAMAN PILIH PERAN (PORTAL UTAMA)      -->
+    <!-- ========================================== -->
+    <section id="screen-portal" class="w-full max-w-4xl py-4 sm:py-6 text-center animate-in fade-in">
+      
+      <!-- BANNER SAMBUTAN + MASKOT BERGERAK BRO -->
+      <div class="bg-gradient-to-r from-white via-white to-[#FCE8D8]/50 rounded-3xl p-5 sm:p-7 border-2 border-[#E4E1D6] shadow-sm mb-8 flex flex-col md:flex-row items-center justify-between gap-6 text-left relative overflow-hidden">
+        <div class="max-w-xl">
+          <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#D7F0EA] text-[#0B6E5C] text-xs font-bold mb-3">
+            <span class="w-2 h-2 rounded-full bg-[#2C9B8A] animate-ping"></span>
+            Presensi Cepat & Operasional Tanpa Drama
+          </div>
+          <!-- Teks sambutan eksak sesuai permintaan -->
+          <h1 class="text-2xl sm:text-3xl lg:text-4xl font-black text-[#0F2A43] tracking-tight leading-tight">
+            &ldquo;hallo selamat datang di shift bro, silahkan lakukan absensi dan selamat bekerja&rdquo;
+          </h1>
+          <p class="text-xs sm:text-sm text-[#6B7280] mt-2.5 leading-relaxed">
+            Pilih sudut pandang peran Anda di bawah ini: <strong>Owner Kafe</strong> untuk memantau kehadiran & payroll, atau <strong>Pegawai Kafe</strong> untuk start shift dan rekap jam kerja.
+          </p>
+          <div class="mt-3 flex items-center gap-2 text-xs font-bold text-[#0F2A43]">
+            <span class="text-[#2C9B8A]">🕒</span>
+            <span id="live-clock-banner">Rabu, 14 Oktober 2026</span>
+          </div>
+        </div>
+
+        <!-- MASKOT BERGERAK BRO THE COFFEE CUP -->
+        <div class="shrink-0 flex flex-col items-center justify-center">
+          <div class="relative w-36 h-36 sm:w-44 sm:h-44 flex items-center justify-center animate-mascot-bob">
+            <!-- Steam -->
+            <div class="absolute -top-3 left-10 flex gap-2">
+              <span class="w-2 h-7 bg-[#F2A33A]/60 rounded-full blur-[1px] animate-mascot-steam-1"></span>
+              <span class="w-2 h-9 bg-[#2C9B8A]/60 rounded-full blur-[1px] animate-mascot-steam-2"></span>
+              <span class="w-1.5 h-6 bg-[#F2A33A]/50 rounded-full blur-[1px] animate-mascot-steam-1"></span>
+            </div>
+
+            <!-- SVG Mascot Body (Karakter Kopi Bro) -->
+            <svg viewBox="0 0 160 160" class="w-full h-full drop-shadow-xl">
+              <ellipse cx="80" cy="142" rx="60" ry="12" fill="#E4E1D6" stroke="#0F2A43" stroke-width="4" />
+              <ellipse cx="80" cy="140" rx="45" ry="8" fill="#F4F2EA" />
+              <path d="M 120 70 C 150 70, 150 115, 120 115" fill="none" stroke="#0F2A43" stroke-width="10" stroke-linecap="round" />
+              <path d="M 35 55 L 42 120 C 45 136, 115 136, 118 120 L 125 55 Z" fill="#FFFFFF" stroke="#0F2A43" stroke-width="5" />
+              <path d="M 52 85 L 108 85 L 104 125 C 100 132, 60 132, 56 125 Z" fill="#2C9B8A" />
+              <path d="M 65 72 L 65 85 M 95 72 L 95 85" stroke="#0F2A43" stroke-width="3" />
+              <rect x="68" y="94" width="24" height="8" rx="2" fill="#F2A33A" stroke="#0F2A43" stroke-width="1" />
+              <!-- NAMA MASKOT: BRO -->
+              <text x="80" y="100.5" text-anchor="middle" font-size="6" font-weight="bold" fill="#0F2A43">BRO</text>
+              <ellipse cx="80" cy="55" rx="45" ry="12" fill="#6B4226" stroke="#0F2A43" stroke-width="4" />
+              <path d="M 80 58 C 76 52, 70 54, 73 60 C 76 64, 80 67, 80 67 C 80 67, 84 64, 87 60 C 90 54, 84 52, 80 58 Z" fill="#FFF" />
+              <circle cx="65" cy="74" r="5" fill="#0F2A43" />
+              <circle cx="67" cy="72" r="1.8" fill="#FFF" />
+              <circle cx="95" cy="74" r="5" fill="#0F2A43" />
+              <circle cx="97" cy="72" r="1.8" fill="#FFF" />
+              <circle cx="56" cy="80" r="4" fill="#FCE8D8" opacity="0.9" />
+              <circle cx="104" cy="80" r="4" fill="#FCE8D8" opacity="0.9" />
+              <path d="M 74 79 Q 80 85 86 79" fill="none" stroke="#0F2A43" stroke-width="3" stroke-linecap="round" />
+              <!-- Hand Waving (Arm animation) -->
+              <g class="animate-mascot-wave">
+                <path d="M 38 88 Q 20 70 14 62 Q 10 58 16 54 Q 22 52 26 58 Q 32 66 42 78" fill="#F2A33A" stroke="#0F2A43" stroke-width="3.5" stroke-linejoin="round" />
+                <circle cx="15" cy="56" r="3.5" fill="#FFF" stroke="#0F2A43" stroke-width="1.5" />
+                <circle cx="19" cy="53" r="3" fill="#FFF" stroke="#0F2A43" stroke-width="1.5" />
+              </g>
+            </svg>
+          </div>
+          <!-- Badge Nama Maskot -->
+          <span class="text-[10px] font-black tracking-wider text-[#0F2A43] bg-white px-2.5 py-0.5 rounded-full border border-[#E4E1D6] shadow-xs mt-1">
+            Hai! Aku Bro 👋
+          </span>
+        </div>
+      </div>
+
+      <!-- 2 KARTU PILIHAN PERAN (HANYA OWNER & PEGAWAI) -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-left mb-8 max-w-3xl mx-auto">
+        <!-- 1. POV Owner / HR -->
+        <div class="bg-white p-7 rounded-3xl border-2 border-[#E4E1D6] hover:border-[#0F2A43] transition-all shadow-xs hover:shadow-xl flex flex-col justify-between">
+          <div>
+            <div class="w-14 h-14 rounded-2xl bg-[#0F2A43] text-white flex items-center justify-center mb-4 shadow-xs">
+              <svg class="w-7 h-7 text-[#F2A33A]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+              </svg>
+            </div>
+            <span class="text-xs font-black uppercase tracking-wider text-[#F2A33A] block">POV 01 · Akses Pemilik & Finansial</span>
+            <h3 class="text-2xl font-bold text-[#0F2A43] mt-1 mb-2">Owner / HR Kafe</h3>
+            <p class="text-xs text-[#6B7280] leading-relaxed mb-6">
+              Lihat siapa saja pegawai yang masuk berdasarkan filter tanggal, bulan, dan tahun. Cek staf yang sedang bekerja, shift pagi/malam, hitung gaji otomatis, serta konfirmasi lembur 1-klik.
+            </p>
+          </div>
+
+          <div class="pt-4 border-t border-[#E4E1D6] space-y-2">
+            <button onclick="openForm('owner', 'daftar')" class="w-full bg-[#0F2A43] hover:bg-[#1E3E5C] text-white font-bold py-3 px-4 rounded-xl text-xs transition-all shadow-xs flex items-center justify-center gap-1.5 touch-target">
+              <span>Daftar Kafe & Buka Dasbor Owner</span> →
+            </button>
+            <button onclick="openForm('owner', 'login')" class="w-full bg-[#F4F2EA] hover:bg-[#E4E1D6] text-[#0F2A43] font-bold py-2.5 px-3 rounded-xl text-xs transition-colors">
+              Masuk Akun Owner Terdaftar
+            </button>
+          </div>
+        </div>
+
+        <!-- 2. POV Pegawai Kafe (Full View tanpa Ikon Handphone) -->
+        <div class="bg-white p-7 rounded-3xl border-2 border-[#E4E1D6] hover:border-[#2C9B8A] transition-all shadow-xs hover:shadow-xl flex flex-col justify-between">
+          <div>
+            <div class="w-14 h-14 rounded-2xl bg-[#2C9B8A] text-white flex items-center justify-center mb-4 shadow-xs">
+              <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+              </svg>
+            </div>
+            <span class="text-xs font-black uppercase tracking-wider text-[#0B6E5C] block">POV 02 · Presensi Pegawai</span>
+            <h3 class="text-2xl font-bold text-[#0F2A43] mt-1 mb-2">Pegawai Kafe</h3>
+            <p class="text-xs text-[#6B7280] leading-relaxed mb-6">
+              Ketik Nama, Password, dan Jobdesk (Barista, Kasir, Kitchen). Tekan tombol <strong>Start Shift</strong> untuk mulai bekerja, lihat <strong>Riwayat Absen</strong> lengkap, serta tombol <strong>Akhiri Shift</strong> di pojok kanan riwayat dengan verifikasi 2-langkah.
+            </p>
+          </div>
+
+          <div class="pt-4 border-t border-[#E4E1D6] space-y-2">
+            <button onclick="openForm('pegawai', 'login')" class="w-full bg-[#2C9B8A] hover:bg-[#237c6e] text-white font-bold py-3 px-4 rounded-xl text-xs transition-all shadow-xs flex items-center justify-center gap-1.5 touch-target">
+              <span>Masuk / Absensi Pegawai</span> →
+            </button>
+            <span class="block text-center text-[10px] text-[#6B7280]">Tampilan penuh bersih tanpa frame perangkat</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- FASILITAS LAYANAN FREE vs PREMIUM (RP25.000 / BULAN) -->
+      <div class="bg-white rounded-3xl p-6 border border-[#E4E1D6] shadow-sm max-w-3xl mx-auto text-left">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#E4E1D6]">
+          <div>
+            <h4 class="text-sm font-bold text-[#0F2A43]">Fasilitas Layanan ShiftBro: Free vs Premium</h4>
+            <p class="text-xs text-[#6B7280]">Solusi efisiensi operasional kafe terjangkau hanya Rp25.000 / bulan</p>
+          </div>
+          <button onclick="togglePlan()" class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-[#F2A33A] text-[#0F2A43] shadow-xs">
+            ★ Klik Toggle Mode Demo
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 pt-4 text-xs">
+          <!-- Kolom Free -->
+          <div class="p-4 rounded-2xl bg-[#F4F2EA]/60 border border-[#E4E1D6]">
+            <span class="font-bold text-[#6B7280] uppercase tracking-wider block mb-2">Paket Free (Gratis)</span>
+            <ul class="space-y-2 text-[#0F2A43]">
+              <li class="flex items-center gap-2">
+                <span class="text-[#2C9B8A] font-bold">✓</span>
+                <span>Absen Masuk & Pulang (Start/End Shift 2-Langkah)</span>
+              </li>
+              <li class="flex items-center gap-2">
+                <span class="text-[#2C9B8A] font-bold">✓</span>
+                <span>Kunci Wi-Fi Kafe (Hanya bisa absen di kafe)</span>
+              </li>
+              <li class="flex items-center gap-2">
+                <span class="text-[#2C9B8A] font-bold">✓</span>
+                <span>Foto Wajah / Selfie Verification</span>
+              </li>
+              <li class="flex items-center gap-2">
+                <span class="text-[#2C9B8A] font-bold">✓</span>
+                <span>Rekap Jam Kerja Dasar</span>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Kolom Premium -->
+          <div class="p-4 rounded-2xl bg-amber-50/70 border-2 border-[#F2A33A]">
+            <div class="flex items-center justify-between mb-2">
+              <span class="font-extrabold text-[#B03A00] uppercase tracking-wider">Paket Premium (Rp25.000 / bln)</span>
+              <span class="text-[10px] font-bold bg-[#F2A33A] text-[#0F2A43] px-2 py-0.5 rounded-full">Best Value</span>
+            </div>
+            <ul class="space-y-2 text-[#0F2A43]">
+              <li class="flex items-start gap-2">
+                <span class="text-[#B03A00] font-bold mt-0.5">✓</span>
+                <div>
+                  <strong>1. Hitung Gaji Otomatis (Payroll):</strong> Jam Kerja x Tarif per Jam = Total Gaji. Download laporan Excel akhir bulan!
+                </div>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-[#B03A00] font-bold mt-0.5">✓</span>
+                <div>
+                  <strong>2. 🚨 Overtime Guard (Cegah Lembur Siluman):</strong> Auto-alert batas jam kerja & Konfirmasi Lembur 1-Klik Owner.
+                </div>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-[#B03A00] font-bold mt-0.5">✓</span>
+                <div>
+                  <strong>3. Manajemen Shift & Tukar Shift Mandiri:</strong> Pegawai ajukan tukar shift di web, Owner tinggal tekan tombol Approve!
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 2. FORM PENDAFTARAN & LOGIN (2 POV)        -->
+    <!-- ========================================== -->
+    <section id="screen-form" class="hidden w-full max-w-md bg-white rounded-[32px] p-6 sm:p-8 border border-[#E4E1D6] shadow-xl relative animate-in zoom-in-95">
+      <div class="flex items-center justify-between pb-4 border-b border-[#E4E1D6] mb-5">
+        <button onclick="navigateTo('screen-portal')" class="text-xs font-bold text-[#2C6079] hover:text-[#0F2A43] flex items-center gap-1 touch-target">
+          ← Pilih Peran Lain
+        </button>
+        <span id="form-role-badge" class="text-[10px] uppercase font-mono font-bold bg-[#F4F2EA] px-2.5 py-1 rounded text-[#0F2A43]">
+          POV: OWNER KAFE
+        </span>
+      </div>
+
+      <!-- Mode Switcher Owner (Daftar / Login) -->
+      <div id="owner-mode-switch" class="grid grid-cols-2 gap-1 p-1 bg-[#F4F2EA] rounded-xl mb-5 text-xs font-bold">
+        <button id="tab-daftar" onclick="setAuthMode('daftar')" class="py-2 rounded-lg bg-[#0F2A43] text-white shadow-xs">
+          Daftar Kafe Baru
+        </button>
+        <button id="tab-login" onclick="setAuthMode('login')" class="py-2 rounded-lg text-[#6B7280] hover:text-[#0F2A43]">
+          Login Owner
+        </button>
+      </div>
+
+      <!-- Form Owner -->
+      <form id="form-owner" onsubmit="handleOwnerSubmit(event)" class="space-y-4">
+        <div>
+          <h3 id="form-owner-title" class="text-lg font-bold text-[#0F2A43]">Pendaftaran Owner & Outlet Baru</h3>
+          <p id="form-owner-sub" class="text-xs text-[#6B7280] mt-0.5">Ketik nama kafe dan data owner untuk inisialisasi sistem.</p>
+        </div>
+
+        <div id="owner-field-outlet">
+          <label class="block text-xs font-bold text-[#0F2A43] mb-1">Nama Outlet Kafe *</label>
+          <input type="text" id="owner-input-outlet" placeholder="Contoh: Kopi Harmoni, Titik Temu, dll." class="w-full bg-[#F4F2EA] border border-[#E4E1D6] rounded-xl px-3.5 py-2.5 text-xs font-semibold text-[#0F2A43] focus:outline-none focus:ring-2 focus:ring-[#0F2A43]">
+        </div>
+
+        <div id="owner-field-nama">
+          <label class="block text-xs font-bold text-[#0F2A43] mb-1">Nama Lengkap Owner / HR *</label>
+          <input type="text" id="owner-input-nama" placeholder="Contoh: Syifa Azzahra" class="w-full bg-[#F4F2EA] border border-[#E4E1D6] rounded-xl px-3.5 py-2.5 text-xs font-semibold text-[#0F2A43] focus:outline-none focus:ring-2 focus:ring-[#0F2A43]">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-[#0F2A43] mb-1">Email Bisnis Owner *</label>
+          <input type="email" required id="owner-input-email" placeholder="nama@kopiharmoni.com" class="w-full bg-[#F4F2EA] border border-[#E4E1D6] rounded-xl px-3.5 py-2.5 text-xs font-semibold text-[#0F2A43] focus:outline-none focus:ring-2 focus:ring-[#0F2A43]">
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-xs font-bold text-[#0F2A43]">Password *</label>
+            <button type="button" onclick="togglePasswordVisibility('owner-input-password')" class="text-[11px] text-[#2C6079] hover:underline">
+              Lihat/Tutup
+            </button>
+          </div>
+          <input type="password" required id="owner-input-password" placeholder="Ketik password Anda" class="w-full bg-[#F4F2EA] border border-[#E4E1D6] rounded-xl px-3.5 py-2.5 text-xs text-[#0F2A43] focus:outline-none focus:ring-2 focus:ring-[#0F2A43]">
+        </div>
+
+        <button type="submit" id="btn-submit-owner" class="w-full bg-[#0F2A43] hover:bg-[#1E3E5C] text-white font-bold py-3 px-4 rounded-xl text-xs transition-all shadow-md touch-target flex items-center justify-center gap-1.5">
+          <span>Daftarkan Kafe & Buka Dasbor</span> →
+        </button>
+      </form>
+
+      <!-- Form Pegawai (Nama, Password, Jobdesk) -->
+      <form id="form-pegawai" onsubmit="handlePegawaiSubmit(event)" class="hidden space-y-4">
+        <div>
+          <h3 class="text-lg font-bold text-[#0F2A43]">Masuk Pegawai Kafe</h3>
+          <p class="text-xs text-[#6B7280] mt-0.5">Ketik nama, password, dan pilih jobdesk Anda sebelum memulai shift.</p>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-[#0F2A43] mb-1">Nama Lengkap Pegawai *</label>
+          <input type="text" required id="pegawai-input-nama" placeholder="Contoh: Joko Susanto" class="w-full bg-[#F4F2EA] border border-[#E4E1D6] rounded-xl px-3.5 py-2.5 text-xs font-semibold text-[#0F2A43] focus:outline-none focus:ring-2 focus:ring-[#2C9B8A]">
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-xs font-bold text-[#0F2A43]">Password Akun Pegawai *</label>
+            <button type="button" onclick="togglePasswordVisibility('pegawai-input-password')" class="text-[11px] text-[#2C6079] hover:underline">
+              Lihat/Tutup
+            </button>
+          </div>
+          <input type="password" required id="pegawai-input-password" placeholder="Ketik password" class="w-full bg-[#F4F2EA] border border-[#E4E1D6] rounded-xl px-3.5 py-2.5 text-xs text-[#0F2A43] focus:outline-none focus:ring-2 focus:ring-[#2C9B8A]">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-[#0F2A43] mb-1.5">Pilih Jobdesk / Stasiun Shift *</label>
+          <div class="grid grid-cols-3 gap-2" id="pegawai-station-options">
+            <button type="button" onclick="selectStation('Barista')" id="btn-st-barista" class="station-btn py-2 px-2 rounded-xl text-xs font-bold border transition-all bg-[#2C9B8A] text-white border-[#2C9B8A] shadow-xs">
+              Barista
+            </button>
+            <button type="button" onclick="selectStation('Kasir')" id="btn-st-kasir" class="station-btn py-2 px-2 rounded-xl text-xs font-bold border transition-all bg-[#F4F2EA] text-[#6B7280] border-[#E4E1D6]">
+              Kasir
+            </button>
+            <button type="button" onclick="selectStation('Kitchen')" id="btn-st-kitchen" class="station-btn py-2 px-2 rounded-xl text-xs font-bold border transition-all bg-[#F4F2EA] text-[#6B7280] border-[#E4E1D6]">
+              Kitchen
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="w-full bg-[#2C9B8A] hover:bg-[#237c6e] text-white font-bold py-3 px-4 rounded-xl text-xs transition-all shadow-md touch-target flex items-center justify-center gap-1.5">
+          <span>Buka Halaman Presensi Pegawai</span> →
+        </button>
+      </form>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 3. DASBOR OPERASIONAL OWNER (FILTER & PAYROLL) -->
+    <!-- ========================================== -->
+    <section id="screen-dashboard-owner" class="hidden w-full max-w-5xl space-y-6 animate-in fade-in">
+      
+      <!-- Outlet Header Info -->
+      <div class="bg-white rounded-3xl p-6 border border-[#E4E1D6] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2.5">
+            <span class="text-2xl">👑</span>
+            <h2 class="text-2xl font-black text-[#0F2A43]">Dasbor Operasional Owner</h2>
+            <span class="bg-[#D7F0EA] text-[#0B6E5C] text-xs font-bold px-2.5 py-0.5 rounded-full">Akses Penuh</span>
+          </div>
+          <p class="text-xs text-[#6B7280] mt-1">
+            Outlet: <strong id="owner-disp-outlet" class="text-[#0F2A43]">Kopi Harmoni</strong> · Owner: <strong id="owner-disp-nama" class="text-[#0F2A43]">Ibu Syifa</strong>
+          </p>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button onclick="togglePlan()" class="px-3 py-2 rounded-xl text-xs font-bold border transition-colors flex items-center gap-1.5 bg-amber-100 text-[#B03A00] border-amber-300">
+            <span>★ Mode Premium Aktif</span>
+          </button>
+          <button onclick="handleLogout()" class="px-3 py-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 text-xs font-bold">
+            Keluar
+          </button>
+        </div>
+      </div>
+
+      <!-- Overtime Guard Banner (Premium) -->
+      <div id="overtime-alert-box" class="p-4 sm:p-5 rounded-3xl bg-amber-50/80 border-2 border-[#F2A33A] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="flex items-start gap-3">
+          <div class="w-9 h-9 rounded-xl bg-[#F2A33A] text-[#0F2A43] flex items-center justify-center shrink-0 font-bold">
+            ⚠️
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h4 class="text-xs font-black uppercase tracking-wider text-[#B03A00]">
+                🚨 Auto-Alert Overtime Guard (Pencegahan Lembur Siluman)
+              </h4>
+              <span class="text-[10px] bg-red-100 text-red-800 font-bold px-2 py-0.2 rounded-full">Peringatan Aktif</span>
+            </div>
+            <p class="text-xs text-[#0F2A43] mt-1 leading-relaxed">
+              <strong>Joko Susanto</strong> sudah bekerja <strong>38 jam minggu ini</strong> (sisa 2 jam sebelum batas maksimum 40 jam). Terdeteksi potensi lembur 1.5 jam hari ini.
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 shrink-0">
+          <button id="btn-approve-ot-demo" onclick="approveOvertimeDemo()" class="bg-[#2C9B8A] hover:bg-[#237c6e] text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-xs touch-target flex items-center gap-1.5">
+            <span>✓ Konfirmasi Lembur 1-Klik</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Bagian Para Pegawai dengan Filter Lengkap -->
+      <div class="bg-white rounded-3xl p-6 border border-[#E4E1D6] shadow-xs space-y-5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#E4E1D6]">
+          <div>
+            <h3 class="text-base font-bold text-[#0F2A43]">Daftar Absensi & Status Kerja Pegawai</h3>
+            <p class="text-xs text-[#6B7280]">
+              Pantau siapa saja yang masuk dan status pegawai yang sedang bekerja saat Anda mengecek.
+            </p>
+          </div>
+
+          <button onclick="downloadPayrollDemo()" class="self-start sm:self-auto bg-[#F2A33A] hover:bg-[#e09129] text-[#0F2A43] px-3.5 py-2 rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5">
+            <span>📊 Download Rekap Gaji (.xlsx)</span>
+          </button>
+        </div>
+
+        <!-- Menu Filter Tanggal, Bulan, Tahun -->
+        <div class="p-4 rounded-2xl bg-[#F4F2EA] border border-[#E4E1D6] space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-[#0F2A43] flex items-center gap-1.5">
+              🔍 Filter Berdasarkan Tanggal Masuk Kerja:
+            </span>
+            <button onclick="resetFilters()" class="text-[11px] text-[#2C6079] hover:underline font-bold">
+              Reset ke Hari Ini (14 Okt 2026)
+            </button>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <div>
+              <label class="block text-[10px] font-bold text-[#6B7280] uppercase mb-1">Tanggal</label>
+              <select id="filter-day" onchange="renderOwnerTable()" class="w-full bg-white border border-[#E4E1D6] rounded-xl px-3 py-2 text-xs font-bold text-[#0F2A43]">
+                <option value="Semua">Semua Tanggal</option>
+                <!-- Populated dynamically via JS -->
+              </select>
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-[#6B7280] uppercase mb-1">Bulan</label>
+              <select id="filter-month" onchange="renderOwnerTable()" class="w-full bg-white border border-[#E4E1D6] rounded-xl px-3 py-2 text-xs font-bold text-[#0F2A43]">
+                <option value="Semua">Semua Bulan</option>
+                <option value="1">Januari</option>
+                <option value="2">Februari</option>
+                <option value="3">Maret</option>
+                <option value="4">April</option>
+                <option value="5">Mei</option>
+                <option value="6">Juni</option>
+                <option value="7">Juli</option>
+                <option value="8">Agustus</option>
+                <option value="9">September</option>
+                <option value="10" selected>Oktober</option>
+                <option value="11">November</option>
+                <option value="12">Desember</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-[#6B7280] uppercase mb-1">Tahun</label>
+              <select id="filter-year" onchange="renderOwnerTable()" class="w-full bg-white border border-[#E4E1D6] rounded-xl px-3 py-2 text-xs font-bold text-[#0F2A43]">
+                <option value="2026" selected>2026</option>
+                <option value="2025">2025</option>
+                <option value="Semua">Semua Tahun</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-[#6B7280] uppercase mb-1">Stasiun Jobdesk</label>
+              <select id="filter-station" onchange="renderOwnerTable()" class="w-full bg-white border border-[#E4E1D6] rounded-xl px-3 py-2 text-xs font-bold text-[#0F2A43]">
+                <option value="Semua">Semua Stasiun</option>
+                <option value="Barista">Barista</option>
+                <option value="Kasir">Kasir</option>
+                <option value="Kitchen">Kitchen</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabel Absensi Pegawai -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-[#F4F2EA] text-[#0F2A43] font-bold border-b border-[#E4E1D6]">
+              <tr>
+                <th class="py-3 px-3 rounded-l-xl">Pegawai & Stasiun</th>
+                <th class="py-3 px-3">Tanggal & Hari</th>
+                <th class="py-3 px-3">Kategori Shift</th>
+                <th class="py-3 px-3">Jam Masuk - Pulang</th>
+                <th class="py-3 px-3">Status Saat Ini</th>
+                <th id="th-gaji" class="py-3 px-3 rounded-r-xl text-right">Hitung Gaji (Tarif/Jam)</th>
+              </tr>
+            </thead>
+            <tbody id="owner-table-body" class="divide-y divide-[#E4E1D6]">
+              <!-- Diisi oleh Javascript renderOwnerTable() -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Manajemen Tukar Shift 1-Klik Owner -->
+      <div class="bg-white rounded-3xl p-6 border border-[#E4E1D6] shadow-xs space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-[#E4E1D6]">
+          <div>
+            <h3 class="text-base font-bold text-[#0F2A43]">Manajemen Tukar Shift Mandiri (1-Klik Approval)</h3>
+            <p class="text-xs text-[#6B7280]">Pegawai mengajukan dari akun mereka, Owner cukup klik Setujui/Approve untuk meresmikan.</p>
+          </div>
+          <span class="text-xs font-bold text-[#0B6E5C] bg-[#D7F0EA] px-3 py-1 rounded-full">1 Pengajuan Menunggu</span>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-[#F4F2EA] border border-[#E4E1D6] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div>
+            <div class="flex items-center gap-2">
+              <strong class="text-[#0F2A43]">Joko Susanto</strong>
+              <span class="text-[#6B7280]">ingin tukar shift dengan</span>
+              <strong class="text-[#0F2A43]">Budi Santoso</strong>
+            </div>
+            <p class="text-[11px] text-[#2C6079] mt-0.5">Jadwal: Kamis, 15 Okt 2026 (Shift Pagi ⇄ Shift Malam) · Alasan: &ldquo;Ada ujian tengah semester&rdquo;</p>
+          </div>
+          <div id="swap-approval-actions" class="flex items-center gap-2">
+            <button onclick="approveSwapDemo()" class="bg-[#2C9B8A] hover:bg-[#237c6e] text-white px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-xs">
+              ✓ Approve Tukar Shift
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 4. TAMPILAN FULL ABSENSI PEGAWAI (NO HP FRAME) -->
+    <!-- ========================================== -->
+    <section id="screen-dashboard-pegawai" class="hidden w-full max-w-5xl space-y-6 animate-in fade-in">
+      
+      <!-- Header Profil Pegawai (Full Width) -->
+      <div class="bg-white rounded-3xl p-6 border border-[#E4E1D6] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div id="pegawai-avatar" class="w-12 h-12 rounded-2xl bg-[#0F2A43] text-white flex items-center justify-center font-black text-lg shadow-xs">
+            J
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 id="pegawai-disp-name" class="text-xl font-black text-[#0F2A43] leading-tight">Nama Pegawai</h2>
+              <span id="pegawai-disp-station" class="text-xs bg-[#D7F0EA] text-[#0B6E5C] font-bold px-2.5 py-0.5 rounded-full">
+                Stasiun Barista
+              </span>
+            </div>
+            <p class="text-xs text-[#6B7280] mt-0.5">
+              Outlet: <strong id="pegawai-disp-outlet" class="text-[#0F2A43]">Kopi Harmoni</strong> · Sistem Presensi Kafe ShiftBro
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <button onclick="openSwapModal()" class="px-3.5 py-2 rounded-xl bg-amber-50 text-[#B03A00] hover:bg-amber-100 border border-[#F2A33A]/40 text-xs font-bold transition-colors flex items-center gap-1.5">
+            <span>⇄ Ajukan Tukar Shift</span>
+          </button>
+          <button onclick="handleLogout()" class="px-3.5 py-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 text-xs font-bold transition-colors">
+            Keluar
+          </button>
+        </div>
+      </div>
+
+      <!-- KARTU START SHIFT LENGKAP -->
+      <div id="card-start-shift" class="bg-gradient-to-br from-white via-white to-[#D7F0EA]/40 rounded-3xl p-6 border-2 border-[#2C9B8A] shadow-md space-y-5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#E4E1D6]">
+          <div>
+            <span class="inline-block text-[10px] font-black uppercase tracking-wider bg-[#D7F0EA] text-[#0B6E5C] px-3 py-1 rounded-full mb-1">
+              Menu Presensi Masuk (Start Shift)
+            </span>
+            <h3 class="text-xl font-black text-[#0F2A43]">
+              Halo, <span id="pegawai-greeting-name">Pegawai</span>! Silakan Mulai Shift Anda
+            </h3>
+          </div>
+          <div class="flex items-center gap-1.5 text-xs font-bold text-[#0B6E5C] bg-[#D7F0EA] px-3 py-1.5 rounded-xl self-start sm:self-auto">
+            <span>📶 Wi-Fi Kafe Terhubung</span>
+          </div>
+        </div>
+
+        <!-- Grid Rincian Informasi Input Shift -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+          <!-- Info 1: Nama & Jobdesk -->
+          <div class="p-3.5 rounded-2xl bg-[#F4F2EA] border border-[#E4E1D6]">
+            <span class="text-[10px] uppercase font-bold text-[#6B7280] block">Nama Pegawai</span>
+            <strong id="start-shift-nama" class="text-sm text-[#0F2A43] block mt-0.5">-</strong>
+            <span id="start-shift-jobdesk" class="text-[11px] text-[#2C6079] font-semibold">Stasiun Barista</span>
+          </div>
+
+          <!-- Info 2: Hari, Tanggal, Bulan, Tahun -->
+          <div class="p-3.5 rounded-2xl bg-[#F4F2EA] border border-[#E4E1D6]">
+            <span class="text-[10px] uppercase font-bold text-[#6B7280] block">Hari & Tanggal Input</span>
+            <strong id="start-shift-date" class="text-sm text-[#0F2A43] block mt-0.5">Rabu, 14 Oktober 2026</strong>
+            <span id="start-shift-clock" class="text-[11px] text-[#0B6E5C] font-mono font-semibold">Pukul 07:00 WIB</span>
+          </div>
+
+          <!-- Info 3: Pilihan Jam Shift -->
+          <div class="p-3.5 rounded-2xl bg-[#F4F2EA] border border-[#E4E1D6]">
+            <label class="text-[10px] uppercase font-bold text-[#6B7280] block mb-1">Pilih Kategori Shift</label>
+            <select id="pegawai-shift-type-select" onchange="updateShiftHoursLabel()" class="w-full bg-white border border-[#E4E1D6] rounded-xl px-2.5 py-1.5 text-xs font-bold text-[#0F2A43] focus:outline-none focus:ring-2 focus:ring-[#2C9B8A]">
+              <option value="Shift Pagi (07:00 - 15:00)">🌅 Shift Pagi (07:00 – 15:00 WIB)</option>
+              <option value="Shift Malam (15:00 - 23:00)">🌙 Shift Malam (15:00 – 23:00 WIB)</option>
+            </select>
+          </div>
+
+          <!-- Info 4: Rentang Jam Kerja -->
+          <div class="p-3.5 rounded-2xl bg-[#D7F0EA]/60 border border-[#2C9B8A]/40 flex flex-col justify-between">
+            <span class="text-[10px] uppercase font-bold text-[#0B6E5C] block">Rentang Jam Kerja</span>
+            <strong id="shift-hours-label" class="text-sm text-[#0F2A43] block">07:00 s/d 15:00 WIB</strong>
+            <span class="text-[10px] text-[#0B6E5C] font-semibold">Durasi Normal: 8 Jam Kerja</span>
+          </div>
+        </div>
+
+        <div class="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <p class="text-xs text-[#6B7280]">
+            Pastikan Anda sudah berada di outlet kafe sebelum menekan tombol di samping.
+          </p>
+          <button onclick="handleStartShiftPegawai()" class="w-full sm:w-auto bg-[#2C9B8A] hover:bg-[#237c6e] text-white font-black px-7 py-3.5 rounded-2xl text-xs sm:text-sm shadow-md transition-all touch-target flex items-center justify-center gap-2">
+            <span>Start Shift (Mulai Bekerja Sekarang)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- KARTU STATUS SHIFT AKTIF (SEDANG BEKERJA) -->
+      <div id="card-active-shift" class="hidden bg-gradient-to-r from-emerald-50 via-white to-amber-50/50 rounded-3xl p-6 border-2 border-[#2C9B8A] shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="flex items-start gap-3.5">
+          <div class="w-11 h-11 rounded-2xl bg-[#2C9B8A] text-white flex items-center justify-center shrink-0 shadow-xs">
+            <span class="animate-spin text-xl">⏳</span>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+              <h3 id="active-shift-title" class="text-base font-black text-[#0F2A43]">
+                Anda Sedang Bekerja (Shift Pagi)
+              </h3>
+            </div>
+            <p id="active-shift-meta" class="text-xs text-[#6B7280] mt-1">
+              Mulai pukul 07:00 WIB pada hari Rabu, 14 Oktober 2026.
+            </p>
+            <p class="text-[11px] text-[#2C6079] font-medium mt-0.5">
+              💡 Tombol <strong>&quot;Akhiri Shift&quot;</strong> tersedia di pojok kanan kartu riwayat absen Anda di bawah ini jika telah selesai bekerja.
+            </p>
+          </div>
+        </div>
+
+        <button onclick="triggerEndShiftFromActive()" class="bg-[#BA1A1A] hover:bg-[#961414] text-white font-black px-5 py-3 rounded-2xl text-xs shadow-md transition-all touch-target flex items-center justify-center gap-2 self-start sm:self-auto shrink-0">
+          <span>Akhiri Shift Hari Ini</span>
+        </button>
+      </div>
+
+      <!-- RIWAYAT ABSEN PEGAWAI (DENGAN TOMBOL AKHIRI SHIFT DI POJOK KANAN) -->
+      <div class="bg-white rounded-3xl p-6 border border-[#E4E1D6] shadow-xs space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#E4E1D6]">
+          <div>
+            <h3 class="text-base font-bold text-[#0F2A43]">
+              Riwayat Absen Anda (<span id="history-pegawai-name">Pegawai</span>)
+            </h3>
+            <p class="text-xs text-[#6B7280]">
+              Catatan hari, tanggal, kategori shift (Pagi/Malam), dan tombol akhiri shift berada di pojok kanan kartu aktif.
+            </p>
+          </div>
+          <div class="flex items-center gap-1.5 text-xs font-semibold text-[#0F2A43]">
+            <span>📅 Total Absen: <span id="history-count">3</span> Hari</span>
+          </div>
+        </div>
+
+        <!-- List Riwayat Absen Dinamis -->
+        <div id="pegawai-history-list" class="space-y-3.5">
+          <!-- Diisi via renderPegawaiHistory() -->
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ========================================== -->
+  <!-- MODAL 1: VERIFIKASI 2 LANGKAH AKHIRI SHIFT -->
+  <!-- ========================================== -->
+  <div id="modal-confirm-end-shift" class="hidden fixed inset-0 z-50 bg-[#0F2A43]/70 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-sm w-full border border-[#E4E1D6] shadow-2xl p-6 space-y-4 animate-in fade-in zoom-in-95">
+      <div class="w-12 h-12 rounded-2xl bg-red-100 text-red-700 flex items-center justify-center mx-auto mb-2 text-xl font-bold">
+        ⚠️
+      </div>
+
+      <div class="text-center">
+        <!-- Kalimat eksak sesuai prompt -->
+        <h3 class="text-base font-black text-[#0F2A43]">
+          Apakah kamu yakin ingin mengakhiri shift?
+        </h3>
+        <p class="text-xs text-[#6B7280] mt-1.5 leading-relaxed">
+          Peringatan ini dibuat agar tombol tidak sengaja tertekan. Jika kamu menyetujui, maka jam kerja resmi shift hari ini akan dihentikan dan dicatat ke rekap absensi.
+        </p>
+      </div>
+
+      <div class="p-3.5 rounded-2xl bg-[#F4F2EA] text-xs text-[#0F2A43] space-y-1 font-mono">
+        <div class="flex justify-between">
+          <span class="text-[#6B7280]">Pegawai:</span>
+          <span id="modal-pegawai-name" class="font-bold">-</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-[#6B7280]">Stasiun:</span>
+          <span id="modal-pegawai-station" class="font-bold">Barista</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-[#6B7280]">Kategori Shift:</span>
+          <span id="modal-pegawai-shift" class="font-bold">Shift Pagi</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-[#6B7280]">Jam Mulai:</span>
+          <span id="modal-shift-start" class="font-bold">07:00 WIB</span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 pt-2">
+        <button onclick="closeEndShiftModal()" class="flex-1 py-3 px-3 rounded-xl border border-[#E4E1D6] text-xs font-bold text-[#6B7280] hover:bg-slate-50 transition-colors">
+          Batal / Lanjut Bekerja
+        </button>
+        <button onclick="confirmEndShiftAction()" class="flex-1 py-3 px-3 rounded-xl bg-[#BA1A1A] hover:bg-[#961414] text-white text-xs font-black shadow-md transition-all touch-target">
+          Ya, Akhiri Shift
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL 2: TUKAR SHIFT PEGAWAI               -->
+  <!-- ========================================== -->
+  <div id="modal-swap-shift" class="hidden fixed inset-0 z-50 bg-[#0F2A43]/70 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-sm w-full border border-[#E4E1D6] shadow-2xl p-6 space-y-4 animate-in fade-in zoom-in-95">
+      <div class="flex items-center justify-between pb-3 border-b border-[#E4E1D6]">
+        <h4 class="text-xs font-bold text-[#0F2A43]">Pengajuan Tukar Shift Kafe</h4>
+        <button onclick="closeSwapModal()" class="w-7 h-7 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-xs">
+          ✕
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block text-[10px] font-bold text-[#6B7280] uppercase mb-1">Pilih Rekan Pengganti Shift:</label>
+          <select id="swap-select-partner" class="w-full bg-[#F4F2EA] border border-[#E4E1D6] rounded-xl px-3 py-2 text-xs font-bold text-[#0F2A43]">
+            <option value="Budi Santoso (Barista)">Budi Santoso (Barista)</option>
+            <option value="Siti Ningsih (Kasir)">Siti Ningsih (Kasir)</option>
+            <option value="Ahmad Kitchen (Kitchen)">Ahmad (Kitchen)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-[10px] font-bold text-[#6B7280] uppercase mb-1">Alasan Singkat:</label>
+          <input type="text" id="swap-input-reason" value="Ada kuliah / keperluan mendadak" class="w-full bg-[#F4F2EA] border border-[#E4E1D6] rounded-xl px-3 py-2 text-xs text-[#0F2A43]">
+        </div>
+
+        <div class="flex items-center gap-2 pt-2">
+          <button onclick="closeSwapModal()" class="flex-1 py-2.5 rounded-xl border border-[#E4E1D6] text-xs font-bold text-[#6B7280]">
+            Batal
+          </button>
+          <button onclick="submitSwapRequest()" class="flex-[2] py-2.5 rounded-xl bg-[#2C9B8A] hover:bg-[#237c6e] text-white text-xs font-bold shadow-md">
+            Kirim ke Owner
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="bg-white border-t border-[#E4E1D6] py-5 text-center text-xs text-[#6B7280] mt-10">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div class="flex items-center gap-2">
+        <span class="font-extrabold text-[#0F2A43]">ShiftBro</span>
+        <span>— Sistem Operasional Shift Kafe & F&B Lokal</span>
+      </div>
+      <div class="flex items-center gap-2 text-[11px]">
+        <span>100% Antarmuka Bahasa Indonesia</span>
+        <span>·</span>
+        <span>Warm Operational Utility</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ========================================== -->
+  <!-- JAVASCRIPT IN-MEMORY OPERASIONAL SHIFTBRO  -->
+  <!-- ========================================== -->
+  <script>
+    // State Aplikasi
+    let currentRole = 'owner';
+    let currentAuthMode = 'daftar';
+    let isPremium = true;
+    const hourlyRate = 18000; // Rp18.000 / jam
+
+    let selectedStation = 'Barista';
+    let activeOwner = null;
+    let activePegawai = null;
+    let isShiftActive = false;
+    let activeShiftRecord = null;
+    let recordToEnd = null;
+
+    // Database In-Memory Presensi
+    let attendanceDatabase = [
+      {
+        id: "ATT-101",
+        namaPegawai: "Joko Susanto",
+        peranStasiun: "Barista",
+        shiftType: "Shift Pagi (07:00 - 15:00)",
+        tanggalInput: "2026-10-14",
+        hari: "Rabu",
+        jamMulai: "07:00",
+        status: "Sedang Bekerja",
+        durasiJam: 6.5,
+        lemburJam: 1.5,
+        lemburApproved: false,
+        outlet: "Kopi Harmoni"
+      },
+      {
+        id: "ATT-102",
+        namaPegawai: "Siti Ningsih",
+        peranStasiun: "Kasir",
+        shiftType: "Shift Pagi (07:00 - 15:00)",
+        tanggalInput: "2026-10-14",
+        hari: "Rabu",
+        jamMulai: "06:55",
+        status: "Sedang Bekerja",
+        durasiJam: 6.6,
+        lemburJam: 0,
+        lemburApproved: false,
+        outlet: "Kopi Harmoni"
+      },
+      {
+        id: "ATT-103",
+        namaPegawai: "Budi Santoso",
+        peranStasiun: "Barista",
+        shiftType: "Shift Malam (15:00 - 23:00)",
+        tanggalInput: "2026-10-14",
+        hari: "Rabu",
+        jamMulai: "15:00",
+        status: "Sedang Bekerja",
+        durasiJam: 1.2,
+        lemburJam: 0,
+        lemburApproved: false,
+        outlet: "Kopi Harmoni"
+      },
+      {
+        id: "ATT-099",
+        namaPegawai: "Joko Susanto",
+        peranStasiun: "Barista",
+        shiftType: "Shift Pagi (07:00 - 15:00)",
+        tanggalInput: "2026-10-13",
+        hari: "Selasa",
+        jamMulai: "07:00",
+        jamSelesai: "15:05",
+        status: "Selesai Shift",
+        durasiJam: 8.0,
+        lemburJam: 0,
+        lemburApproved: false,
+        outlet: "Kopi Harmoni"
+      },
+      {
+        id: "ATT-098",
+        namaPegawai: "Joko Susanto",
+        peranStasiun: "Barista",
+        shiftType: "Shift Malam (15:00 - 23:00)",
+        tanggalInput: "2026-10-12",
+        hari: "Senin",
+        jamMulai: "15:00",
+        jamSelesai: "23:02",
+        status: "Selesai Shift",
+        durasiJam: 8.0,
+        lemburJam: 0,
+        lemburApproved: false,
+        outlet: "Kopi Harmoni"
+      }
+    ];
+
+    // Realtime Clock
+    function updateClock() {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB';
+      const dateStr = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      
+      const banner = document.getElementById('live-clock-banner');
+      if (banner) banner.innerText = `${dateStr} · ${timeStr}`;
+
+      const stDate = document.getElementById('start-shift-date');
+      if (stDate) stDate.innerText = dateStr;
+
+      const stClock = document.getElementById('start-shift-clock');
+      if (stClock) stClock.innerText = `Pukul ${timeStr}`;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Populate tanggal filter options
+    const filterDaySelect = document.getElementById('filter-day');
+    for (let i = 1; i <= 31; i++) {
+      const opt = document.createElement('option');
+      opt.value = String(i);
+      opt.innerText = `Tanggal ${i}`;
+      if (i === 14) opt.selected = true;
+      filterDaySelect.appendChild(opt);
+    }
+
+    // Navigasi Screen
+    function navigateTo(screenId) {
+      const screens = ['screen-portal', 'screen-form', 'screen-dashboard-owner', 'screen-dashboard-pegawai'];
+      screens.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+      });
+
+      const target = document.getElementById(screenId);
+      if (target) target.classList.remove('hidden');
+
+      const logoutBtn = document.getElementById('btn-header-logout');
+      if (logoutBtn) {
+        if (screenId === 'screen-portal') {
+          logoutBtn.classList.add('hidden');
+        } else {
+          logoutBtn.classList.remove('hidden');
+        }
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Buka Form
+    function openForm(role, mode = 'daftar') {
+      currentRole = role;
+      currentAuthMode = mode;
+
+      const badge = document.getElementById('form-role-badge');
+      const ownerSwitch = document.getElementById('owner-mode-switch');
+      const formOwner = document.getElementById('form-owner');
+      const formPegawai = document.getElementById('form-pegawai');
+
+      if (role === 'owner') {
+        badge.innerText = 'POV: OWNER KAFE';
+        ownerSwitch.classList.remove('hidden');
+        formOwner.classList.remove('hidden');
+        formPegawai.classList.add('hidden');
+        setAuthMode(mode);
+      } else {
+        badge.innerText = 'POV: PEGAWAI KAFE';
+        ownerSwitch.classList.add('hidden');
+        formOwner.classList.add('hidden');
+        formPegawai.classList.remove('hidden');
+      }
+
+      navigateTo('screen-form');
+    }
+
+    function setAuthMode(mode) {
+      currentAuthMode = mode;
+      const tabDaftar = document.getElementById('tab-daftar');
+      const tabLogin = document.getElementById('tab-login');
+      const fieldOutlet = document.getElementById('owner-field-outlet');
+      const fieldNama = document.getElementById('owner-field-nama');
+      const formTitle = document.getElementById('form-owner-title');
+      const formSub = document.getElementById('form-owner-sub');
+      const btnSubmit = document.getElementById('btn-submit-owner');
+
+      if (mode === 'daftar') {
+        tabDaftar.className = 'py-2 rounded-lg bg-[#0F2A43] text-white shadow-xs';
+        tabLogin.className = 'py-2 rounded-lg text-[#6B7280] hover:text-[#0F2A43]';
+        fieldOutlet.classList.remove('hidden');
+        fieldNama.classList.remove('hidden');
+        formTitle.innerText = 'Pendaftaran Owner & Outlet Baru';
+        formSub.innerText = 'Ketik nama kafe dan data owner untuk inisialisasi sistem.';
+        btnSubmit.innerHTML = '<span>Daftarkan Kafe & Buka Dasbor</span> →';
+      } else {
+        tabLogin.className = 'py-2 rounded-lg bg-[#0F2A43] text-white shadow-xs';
+        tabDaftar.className = 'py-2 rounded-lg text-[#6B7280] hover:text-[#0F2A43]';
+        fieldOutlet.classList.add('hidden');
+        fieldNama.classList.add('hidden');
+        formTitle.innerText = 'Masuk ke Dasbor Owner';
+        formSub.innerText = 'Gunakan email & kata sandi yang telah Anda daftarkan.';
+        btnSubmit.innerHTML = '<span>Masuk ke Dasbor Owner</span> →';
+      }
+    }
+
+    function selectStation(st) {
+      selectedStation = st;
+      const buttons = document.querySelectorAll('.station-btn');
+      buttons.forEach(b => {
+        b.className = 'station-btn py-2 px-2 rounded-xl text-xs font-bold border transition-all bg-[#F4F2EA] text-[#6B7280] border-[#E4E1D6]';
+      });
+      const activeBtn = document.getElementById(`btn-st-${st.toLowerCase()}`);
+      if (activeBtn) {
+        activeBtn.className = 'station-btn py-2 px-2 rounded-xl text-xs font-bold border transition-all bg-[#2C9B8A] text-white border-[#2C9B8A] shadow-xs';
+      }
+    }
+
+    function togglePasswordVisibility(inputId) {
+      const inp = document.getElementById(inputId);
+      if (inp) {
+        inp.type = inp.type === 'password' ? 'text' : 'password';
+      }
+    }
+
+    // Submit Owner
+    function handleOwnerSubmit(e) {
+      e.preventDefault();
+      const email = document.getElementById('owner-input-email').value.trim();
+      const nama = document.getElementById('owner-input-nama').value.trim() || 'Ibu Syifa';
+      const outlet = document.getElementById('owner-input-outlet').value.trim() || 'Kopi Harmoni';
+
+      activeOwner = { nama, outlet, email };
+      document.getElementById('owner-disp-outlet').innerText = outlet;
+      document.getElementById('owner-disp-nama').innerText = nama;
+
+      showToast('Akses Owner Dibuka!', `Selamat datang ${nama} di dasbor ${outlet}.`);
+      renderOwnerTable();
+      navigateTo('screen-dashboard-owner');
+    }
+
+    // Submit Pegawai
+    function handlePegawaiSubmit(e) {
+      e.preventDefault();
+      const nama = document.getElementById('pegawai-input-nama').value.trim();
+      const outlet = (activeOwner && activeOwner.outlet) ? activeOwner.outlet : 'Kopi Harmoni';
+
+      activePegawai = {
+        nama: nama,
+        jobdesk: selectedStation,
+        outlet: outlet
+      };
+
+      document.getElementById('pegawai-disp-name').innerText = nama;
+      document.getElementById('pegawai-disp-station').innerText = `Stasiun ${selectedStation}`;
+      document.getElementById('pegawai-disp-outlet').innerText = outlet;
+      document.getElementById('pegawai-avatar').innerText = nama[0].toUpperCase();
+      document.getElementById('pegawai-greeting-name').innerText = nama;
+      document.getElementById('history-pegawai-name').innerText = nama;
+
+      document.getElementById('start-shift-nama').innerText = nama;
+      document.getElementById('start-shift-jobdesk').innerText = `Stasiun ${selectedStation}`;
+
+      // Check if employee has active shift
+      const activeRec = attendanceDatabase.find(
+        r => r.namaPegawai.toLowerCase() === nama.toLowerCase() && r.status === 'Sedang Bekerja'
+      );
+
+      if (activeRec) {
+        isShiftActive = true;
+        activeShiftRecord = activeRec;
+        showActiveShiftCard(activeRec);
+      } else {
+        isShiftActive = false;
+        activeShiftRecord = null;
+        showStartShiftCard();
+      }
+
+      renderPegawaiHistory();
+      showToast('Login Pegawai Berhasil!', `Selamat bertugas di stasiun ${selectedStation}, ${nama}!`);
+      navigateTo('screen-dashboard-pegawai');
+    }
+
+    function showStartShiftCard() {
+      document.getElementById('card-start-shift').classList.remove('hidden');
+      document.getElementById('card-active-shift').classList.add('hidden');
+    }
+
+    function showActiveShiftCard(rec) {
+      document.getElementById('card-start-shift').classList.add('hidden');
+      const activeCard = document.getElementById('card-active-shift');
+      activeCard.classList.remove('hidden');
+
+      const isPagi = rec.shiftType.includes('Pagi');
+      document.getElementById('active-shift-title').innerText = `Anda Sedang Bekerja (${isPagi ? 'Shift Pagi' : 'Shift Malam'})`;
+      document.getElementById('active-shift-meta').innerHTML = `Mulai pukul <strong class="text-[#0F2A43]">${rec.jamMulai} WIB</strong> pada hari <strong>${rec.hari}, ${rec.tanggalInput}</strong>.`;
+    }
+
+    function updateShiftHoursLabel() {
+      const sel = document.getElementById('pegawai-shift-type-select').value;
+      const isPagi = sel.includes('Pagi');
+      document.getElementById('shift-hours-label').innerText = isPagi ? '07:00 s/d 15:00 WIB' : '15:00 s/d 23:00 WIB';
+    }
+
+    // Pegawai Start Shift
+    function handleStartShiftPegawai() {
+      if (!activePegawai) return;
+
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+      const dateStr = now.toISOString().split('T')[0];
+      const dayName = now.toLocaleDateString('id-ID', { weekday: 'long' });
+      const shiftType = document.getElementById('pegawai-shift-type-select').value;
+
+      const newRec = {
+        id: `ATT-${Date.now().toString().slice(-4)}`,
+        namaPegawai: activePegawai.nama,
+        peranStasiun: activePegawai.jobdesk,
+        shiftType: shiftType,
+        tanggalInput: dateStr,
+        hari: dayName,
+        jamMulai: timeStr,
+        status: "Sedang Bekerja",
+        durasiJam: 0.1,
+        lemburJam: 0,
+        lemburApproved: false,
+        outlet: activePegawai.outlet
+      };
+
+      attendanceDatabase.unshift(newRec);
+      isShiftActive = true;
+      activeShiftRecord = newRec;
+
+      showActiveShiftCard(newRec);
+      renderPegawaiHistory();
+      renderOwnerTable();
+
+      showToast('Shift Dimulai!', `Jam kerja Anda tercatat mulai pukul ${timeStr} WIB. Selamat bekerja!`);
+    }
+
+    // Trigger Akhiri Shift dari Kartu Aktif atau Pojok Kanan Riwayat
+    function triggerEndShift(recId) {
+      const rec = attendanceDatabase.find(r => r.id === recId);
+      if (!rec) return;
+
+      recordToEnd = rec;
+      document.getElementById('modal-pegawai-name').innerText = rec.namaPegawai;
+      document.getElementById('modal-pegawai-station').innerText = rec.peranStasiun;
+      document.getElementById('modal-pegawai-shift').innerText = rec.shiftType.includes('Pagi') ? 'Shift Pagi' : 'Shift Malam';
+      document.getElementById('modal-shift-start').innerText = `${rec.jamMulai} WIB`;
+
+      document.getElementById('modal-confirm-end-shift').classList.remove('hidden');
+    }
+
+    function triggerEndShiftFromActive() {
+      if (activeShiftRecord) {
+        triggerEndShift(activeShiftRecord.id);
+      }
+    }
+
+    function closeEndShiftModal() {
+      document.getElementById('modal-confirm-end-shift').classList.add('hidden');
+      recordToEnd = null;
+    }
+
+    function confirmEndShiftAction() {
+      if (!recordToEnd) return;
+
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+
+      recordToEnd.status = 'Selesai Shift';
+      recordToEnd.jamSelesai = timeStr;
+      recordToEnd.durasiJam = 8.0;
+
+      isShiftActive = false;
+      activeShiftRecord = null;
+
+      closeEndShiftModal();
+      showStartShiftCard();
+      renderPegawaiHistory();
+      renderOwnerTable();
+
+      showToast('Shift Resmi Selesai!', `Shift berhasil diakhiri pada pukul ${timeStr} WIB. Terima kasih atas kerja keras Anda!`);
+    }
+
+    // Render Riwayat Absen Pegawai
+    function renderPegawaiHistory() {
+      if (!activePegawai) return;
+
+      const container = document.getElementById('pegawai-history-list');
+      const filtered = attendanceDatabase.filter(
+        r => r.namaPegawai.toLowerCase() === activePegawai.nama.toLowerCase()
+      );
+
+      document.getElementById('history-count').innerText = filtered.length;
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="p-8 text-center bg-[#F4F2EA] rounded-2xl border border-dashed border-[#E4E1D6]">
+            <p class="text-xs font-bold text-[#0F2A43]">Belum ada riwayat absensi yang tercatat.</p>
+            <p class="text-[11px] text-[#6B7280] mt-1">Tekan tombol <strong>Start Shift</strong> di atas untuk membuat catatan absensi hari ini.</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = filtered.map(rec => {
+        const isWorkingNow = rec.status === 'Sedang Bekerja';
+        const isShiftPagi = rec.shiftType.includes('Pagi');
+
+        return `
+          <div class="p-5 rounded-2xl border transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+            isWorkingNow
+              ? 'bg-gradient-to-r from-white via-white to-amber-50/40 border-2 border-[#F2A33A] shadow-md'
+              : 'bg-[#F4F2EA]/70 border-[#E4E1D6]'
+          }">
+            <div class="space-y-1.5">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="text-sm font-black text-[#0F2A43]">${rec.hari}, ${rec.tanggalInput}</span>
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+                  isShiftPagi
+                    ? 'bg-amber-100 text-amber-900 border border-amber-200'
+                    : 'bg-indigo-100 text-indigo-900 border border-indigo-200'
+                }">
+                  ${isShiftPagi ? '🌅 Shift Pagi (07:00 – 15:00)' : '🌙 Shift Malam (15:00 – 23:00)'}
+                </span>
+                <span class="text-[10px] font-bold bg-white px-2 py-0.5 rounded border border-[#E4E1D6] text-[#2C6079]">
+                  Stasiun ${rec.peranStasiun}
+                </span>
+              </div>
+
+              <div class="text-xs text-[#6B7280] flex flex-wrap items-center gap-3">
+                <span class="font-mono">Jam Masuk: <strong class="text-[#0F2A43]">${rec.jamMulai} WIB</strong></span>
+                <span>·</span>
+                <span class="font-mono">Jam Pulang: <strong class="text-[#0F2A43]">${rec.jamSelesai ? rec.jamSelesai + ' WIB' : 'Sedang Berlangsung'}</strong></span>
+                <span>·</span>
+                <span>Status: <strong class="${isWorkingNow ? 'text-[#0B6E5C]' : 'text-[#0F2A43]'}">${isWorkingNow ? '🟢 Sedang Bekerja' : '✓ Selesai (' + rec.durasiJam + ' Jam)'}</strong></span>
+              </div>
+            </div>
+
+            <!-- POJOK KANAN DARI RIWAYAT ABSEN DI HARI ITU: TOMBOL AKHIRI SHIFT -->
+            <div class="shrink-0 flex items-center justify-end">
+              ${isWorkingNow ? `
+                <button type="button" onclick="triggerEndShift('${rec.id}')" class="bg-[#BA1A1A] hover:bg-[#961414] text-white font-black px-4 py-2.5 rounded-xl text-xs shadow-md transition-all touch-target flex items-center gap-1.5">
+                  <span>Akhiri Shift</span>
+                </button>
+              ` : `
+                <span class="text-[11px] font-bold text-[#0B6E5C] bg-[#D7F0EA] px-3 py-1 rounded-xl flex items-center gap-1">
+                  ✓ Shift Selesai Tercatat
+                </span>
+              `}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Render Tabel Owner Dashboard dengan Filter
+    function renderOwnerTable() {
+      const fDay = document.getElementById('filter-day').value;
+      const fMonth = document.getElementById('filter-month').value;
+      const fYear = document.getElementById('filter-year').value;
+      const fStation = document.getElementById('filter-station').value;
+
+      const filtered = attendanceDatabase.filter(item => {
+        const [y, m, d] = item.tanggalInput.split('-');
+        const matchYear = fYear === 'Semua' || y === fYear;
+        const matchMonth = fMonth === 'Semua' || m === fMonth.padStart(2, '0');
+        const matchDay = fDay === 'Semua' || d === fDay.padStart(2, '0');
+        const matchStation = fStation === 'Semua' || item.peranStasiun === fStation;
+        return matchYear && matchMonth && matchDay && matchStation;
+      });
+
+      const tbody = document.getElementById('owner-table-body');
+      if (filtered.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="${isPremium ? 6 : 5}" class="py-8 text-center text-slate-400">
+              Tidak ada data absensi pegawai untuk filter tanggal/bulan/tahun tersebut.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(rec => {
+        const isWorkingNow = rec.status === 'Sedang Bekerja';
+        const isShiftPagi = rec.shiftType.includes('Pagi');
+        const totalGaji = Math.round(rec.durasiJam * hourlyRate);
+
+        return `
+          <tr class="hover:bg-slate-50 transition-colors">
+            <td class="py-3 px-3">
+              <span class="font-bold text-[#0F2A43] block">${rec.namaPegawai}</span>
+              <span class="text-[10px] text-[#2C6079] font-semibold">${rec.peranStasiun}</span>
+            </td>
+            <td class="py-3 px-3">
+              <span class="font-semibold text-[#0F2A43]">${rec.hari}</span>
+              <span class="font-mono text-[10px] text-[#6B7280] block">${rec.tanggalInput}</span>
+            </td>
+            <td class="py-3 px-3">
+              <span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                isShiftPagi
+                  ? 'bg-amber-100 text-amber-900 border border-amber-200'
+                  : 'bg-indigo-100 text-indigo-900 border border-indigo-200'
+              }">
+                ${isShiftPagi ? '🌅 Shift Pagi' : '🌙 Shift Malam'}
+              </span>
+            </td>
+            <td class="py-3 px-3 font-mono">
+              <span class="font-bold text-[#0F2A43]">${rec.jamMulai}</span>
+              <span class="text-slate-400"> s/d </span>
+              <span class="text-[#6B7280]">${rec.jamSelesai || '— (Sedang Berjalan)'}</span>
+            </td>
+            <td class="py-3 px-3">
+              ${isWorkingNow ? `
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-[#D7F0EA] text-[#0B6E5C] border border-[#2C9B8A]/30">
+                  <span class="w-1.5 h-1.5 rounded-full bg-[#0B6E5C] animate-ping"></span>
+                  Sedang Bekerja (${isShiftPagi ? 'Shift Pagi' : 'Shift Malam'})
+                </span>
+              ` : `
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
+                  ✓ Selesai Shift (${rec.durasiJam} Jam)
+                </span>
+              `}
+            </td>
+            ${isPremium ? `
+              <td class="py-3 px-3 text-right">
+                <span class="font-black text-[#0F2A43] text-sm tabular-nums">
+                  Rp${totalGaji.toLocaleString('id-ID')}
+                </span>
+                <span class="text-[10px] text-[#6B7280] block">
+                  ${rec.durasiJam} jam x Rp${hourlyRate.toLocaleString('id-ID')}
+                </span>
+              </td>
+            ` : ''}
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function resetFilters() {
+      document.getElementById('filter-day').value = '14';
+      document.getElementById('filter-month').value = '10';
+      document.getElementById('filter-year').value = '2026';
+      document.getElementById('filter-station').value = 'Semua';
+      renderOwnerTable();
+    }
+
+    function togglePlan() {
+      isPremium = !isPremium;
+      const dot = document.getElementById('plan-badge-dot');
+      const text = document.getElementById('plan-badge-text');
+      const thGaji = document.getElementById('th-gaji');
+
+      if (isPremium) {
+        dot.className = 'w-2 h-2 rounded-full bg-[#F2A33A] animate-pulse';
+        text.innerText = 'Paket Premium (Rp25rb/bln)';
+        if (thGaji) thGaji.classList.remove('hidden');
+        showToast('Mode Premium Aktif', 'Fitur Hitung Gaji, Overtime Guard, dan Tukar Shift aktif!');
+      } else {
+        dot.className = 'w-2 h-2 rounded-full bg-[#2C9B8A]';
+        text.innerText = 'Paket Free';
+        if (thGaji) thGaji.classList.add('hidden');
+        showToast('Mode Free Aktif', 'Beralih ke paket dasar gratis.');
+      }
+      renderOwnerTable();
+    }
+
+    function approveOvertimeDemo() {
+      const rec = attendanceDatabase.find(r => r.id === 'ATT-101');
+      if (rec) rec.lemburApproved = true;
+      document.getElementById('btn-approve-ot-demo').innerHTML = '<span>✓ Disetujui!</span>';
+      document.getElementById('btn-approve-ot-demo').className = 'bg-emerald-600 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-xs';
+      showToast('Lembur Disetujui!', 'Jam lembur resmi dihitung ke rekap gaji bulan ini.');
+      renderOwnerTable();
+    }
+
+    function approveSwapDemo() {
+      const act = document.getElementById('swap-approval-actions');
+      act.innerHTML = '<span class="text-[10px] font-bold text-[#0B6E5C] bg-[#D7F0EA] px-3 py-1 rounded-full">✓ Disetujui Owner</span>';
+      showToast('Tukar Shift Disetujui!', 'Jadwal mingguan otomatis diperbarui di sistem.');
+    }
+
+    function downloadPayrollDemo() {
+      showToast('Download Rekap Gaji', 'Mengunduh laporan rekap payroll bulan Oktober format Excel (.xlsx).');
+    }
+
+    function openSwapModal() {
+      document.getElementById('modal-swap-shift').classList.remove('hidden');
+    }
+
+    function closeSwapModal() {
+      document.getElementById('modal-swap-shift').classList.add('hidden');
+    }
+
+    function submitSwapRequest() {
+      closeSwapModal();
+      showToast('Pengajuan Terkirim!', 'Permintaan tukar shift diteruskan ke Owner untuk di-approve 1-klik.');
+    }
+
+    function handleLogout() {
+      activeOwner = null;
+      activePegawai = null;
+      isShiftActive = false;
+      activeShiftRecord = null;
+      navigateTo('screen-portal');
+      showToast('Sesi Selesai', 'Kembali ke halaman pemilihan peran ShiftBro.');
+    }
+
+    function showToast(title, desc) {
+      const toast = document.getElementById('toast-notif');
+      document.getElementById('toast-title').innerText = title;
+      document.getElementById('toast-desc').innerText = desc;
+      toast.classList.remove('translate-y-16', 'opacity-0', 'pointer-events-none');
+      setTimeout(() => {
+        toast.classList.add('translate-y-16', 'opacity-0', 'pointer-events-none');
+      }, 3500);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+{
+  "name": "ShiftBro — Sistem Absensi & Operasional Shift Kafe",
+  "description": "Sistem presensi mobile-first untuk Pegawai & Owner kafe, dilengkapi filter absensi realtime, maskot Bro, dan modul Payroll Premium.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

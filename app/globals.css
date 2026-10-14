@@ -1,0 +1,98 @@
+@import "tailwindcss";
+
+:root {
+  --color-primary-navy: #0F2A43;
+  --color-navy-soft: #1E3E5C;
+  --color-teal-accent: #2C9B8A;
+  --color-amber-accent: #F2A33A;
+  --color-bg-warm: #F4F2EA;
+}
+
+body {
+  background-color: #F4F2EA;
+  color: #111827;
+  -webkit-tap-highlight-color: transparent;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+/* Ergonomic touch utility classes */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.touch-press:active {
+  transform: scale(0.97);
+  transition: transform 0.1s ease-in-out;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Mascot animations */
+@keyframes mascotWave {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(20deg);
+  }
+  75% {
+    transform: rotate(-10deg);
+  }
+}
+
+@keyframes mascotBob {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes mascotSteam {
+  0% {
+    opacity: 0.2;
+    transform: translateY(0px) scale(0.9);
+  }
+  50% {
+    opacity: 0.8;
+    transform: translateY(-8px) scale(1.1);
+  }
+  100% {
+    opacity: 0.1;
+    transform: translateY(-16px) scale(1.2);
+  }
+}
+
+.animate-mascot-wave {
+  transform-origin: bottom left;
+  animation: mascotWave 1.4s ease-in-out infinite;
+}
+
+.animate-mascot-bob {
+  animation: mascotBob 3s ease-in-out infinite;
+}
+
+.animate-mascot-steam-1 {
+  animation: mascotSteam 2.2s ease-in-out infinite;
+}
+
+.animate-mascot-steam-2 {
+  animation: mascotSteam 2.6s ease-in-out 0.8s infinite;
+}
+
