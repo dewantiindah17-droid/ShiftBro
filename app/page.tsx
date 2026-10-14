@@ -59,6 +59,14 @@ interface SwapRequest {
   status: "Menunggu Approval" | "Disetujui" | "Ditolak";
 }
 
+// ==========================================
+// KONFIGURASI PAKET PREMIUM (Rp25.000 / bulan)
+// ==========================================
+// Link produk "ShiftBro Pro" milikmu di lynk.id
+const LYNK_PRO_URL = "https://lynk.id/pionaaaaaaa/g2nn8r72303o";
+const PREMIUM_PRICE_LABEL = "Rp25.000 / bulan";
+const PRO_STORAGE_KEY = "shiftbro_premium_expiry";
+
 export default function ShiftBroApp() {
   // Navigation & Role states (Hanya 2 POV: Owner & Pegawai)
   const [currentScreen, setCurrentScreen] = useState<"portal" | "form-auth" | "dashboard-owner" | "dashboard-pegawai">("portal");
@@ -66,8 +74,15 @@ export default function ShiftBroApp() {
   const [authMode, setAuthMode] = useState<AuthMode>("daftar");
 
   // Plan State: Free vs Premium (Rp25.000 / bulan)
-  const [isPremium, setIsPremium] = useState<boolean>(true);
+  const [isPremium, setIsPremium] = useState<boolean>(false);
+  const [premiumExpiry, setPremiumExpiry] = useState<number | null>(null);
   const [hourlyRate, setHourlyRate] = useState<number>(18000); // Rp 18.000 / jam
+
+  // Upgrade / Aktivasi Lisensi Premium
+  const [showUpgradeModal, setShowUpgradeModal] = useState<boolean>(false);
+  const [licenseInput, setLicenseInput] = useState<string>("");
+  const [licenseError, setLicenseError] = useState<string>("");
+  const [licenseLoading, setLicenseLoading] = useState<boolean>(false);
 
   // Form Inputs Owner
   const [ownerOutlet, setOwnerOutlet] = useState("");
@@ -230,6 +245,24 @@ export default function ShiftBroApp() {
     updateTime();
     const timer = setInterval(updateTime, 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  // Muat status Premium yang tersimpan di browser (localStorage)
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(PRO_STORAGE_KEY);
+      if (stored) {
+        const expiry = Number(stored);
+        if (!Number.isNaN(expiry) && expiry > Date.now()) {
+          setIsPremium(true);
+          setPremiumExpiry(expiry);
+        } else {
+          window.localStorage.removeItem(PRO_STORAGE_KEY);
+        }
+      }
+    } catch {
+      // localStorage mungkin tidak tersedia; abaikan.
+    }
   }, []);
 
   // Toast Notifier
@@ -436,6 +469,78 @@ export default function ShiftBroApp() {
   };
 
   // ==========================================
+  // PREMIUM: AKTIVASI & PENONAKTIFAN LISENSI
+  // ==========================================
+  const premiumExpiryLabel = premiumExpiry
+    ? new Date(premiumExpiry).toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      })
+    : "";
+
+  const handleActivateLicense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const code = licenseInput.trim();
+    if (!code) {
+      setLicenseError("Masukkan kode lisensi terlebih dahulu.");
+      return;
+    }
+
+    setLicenseLoading(true);
+    setLicenseError("");
+
+    try {
+      const res = await fetch("/api/license/redeem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code,
+          outlet: activeOwner?.outlet,
+          nama: activeOwner?.nama,
+        }),
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        setLicenseError(data.message || "Kode lisensi tidak valid.");
+        return;
+      }
+
+      const expiry = new Date(data.expiresAt).getTime();
+      setIsPremium(true);
+      setPremiumExpiry(expiry);
+      setLicenseInput("");
+      setShowUpgradeModal(false);
+      try {
+        window.localStorage.setItem(PRO_STORAGE_KEY, String(expiry));
+      } catch {
+        // abaikan bila localStorage tidak tersedia
+      }
+      showToast(
+        "Premium Aktif! 🎉",
+        "Fitur Payroll, Overtime Guard & Tukar Shift telah terbuka.",
+        "success"
+      );
+    } catch {
+      setLicenseError("Gagal menghubungi server. Coba lagi.");
+    } finally {
+      setLicenseLoading(false);
+    }
+  };
+
+  const handleDeactivatePremium = () => {
+    setIsPremium(false);
+    setPremiumExpiry(null);
+    try {
+      window.localStorage.removeItem(PRO_STORAGE_KEY);
+    } catch {
+      // abaikan
+    }
+    showToast("Premium Dinonaktifkan", "Kembali ke Paket Free (mode demo).", "success");
+  };
+
+  // ==========================================
   // FILTERING LOGIC OWNER DASHBOARD
   // ==========================================
   const filteredAttendance = attendanceList.filter((item) => {
@@ -490,11 +595,15 @@ export default function ShiftBroApp() {
               </button>
             )}
 
-            {/* Status Paket Badge */}
-            <div className="flex items-center gap-1.5 text-xs text-slate-200 bg-[#1E3E5C] px-3 py-1.5 rounded-xl border border-[#2C6079]/50">
+            {/* Status Paket Badge (klik untuk kelola langganan) */}
+            <button
+              type="button"
+              onClick={() => setShowUpgradeModal(true)}
+              className="flex items-center gap-1.5 text-xs text-slate-200 bg-[#1E3E5C] hover:bg-[#2C6079] px-3 py-1.5 rounded-xl border border-[#2C6079]/50 transition-colors"
+            >
               <span className={`w-2 h-2 rounded-full ${isPremium ? "bg-[#F2A33A] animate-pulse" : "bg-[#2C9B8A]"}`} />
               <span className="font-semibold">{isPremium ? "Paket Premium (Rp25rb/bln)" : "Paket Free"}</span>
-            </div>
+            </button>
           </div>
         </div>
       </header>
@@ -705,18 +814,14 @@ export default function ShiftBroApp() {
                   <p className="text-xs text-[#6B7280]">Solusi efisiensi operasional kafe terjangkau hanya Rp25.000 / bulan</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-[#6B7280]">Mode Demo:</span>
                   <button
                     type="button"
-                    onClick={() => {
-                      setIsPremium(!isPremium);
-                      showToast("Status Paket Diubah", `Sekarang menggunakan ${!isPremium ? "Paket Premium Rp25.000" : "Paket Free"}.`, "success");
-                    }}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                      isPremium ? "bg-[#F2A33A] text-[#0F2A43] shadow-xs" : "bg-slate-200 text-slate-700"
+                    onClick={() => setShowUpgradeModal(true)}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                      isPremium ? "bg-[#F2A33A] text-[#0F2A43] shadow-xs" : "bg-[#2C9B8A] text-white shadow-xs hover:bg-[#237c6e]"
                     }`}
                   >
-                    {isPremium ? "★ Premium Aktif" : "Mode Free"}
+                    {isPremium ? "★ Premium Aktif" : "Upgrade ke Premium →"}
                   </button>
                 </div>
               </div>
@@ -771,6 +876,13 @@ export default function ShiftBroApp() {
                       </div>
                     </li>
                   </ul>
+                  <button
+                    type="button"
+                    onClick={() => setShowUpgradeModal(true)}
+                    className="mt-4 w-full bg-[#F2A33A] hover:bg-[#e09129] text-[#0F2A43] font-bold py-2.5 rounded-xl text-xs shadow-xs flex items-center justify-center gap-1.5"
+                  >
+                    {isPremium ? "Kelola Langganan Premium" : "Berlangganan Premium Sekarang →"}
+                  </button>
                 </div>
               </div>
             </div>
@@ -1010,13 +1122,15 @@ export default function ShiftBroApp() {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsPremium(!isPremium)}
+                  onClick={() => setShowUpgradeModal(true)}
                   className={`px-3 py-2 rounded-xl text-xs font-bold border transition-colors flex items-center gap-1.5 ${
-                    isPremium ? "bg-amber-100 text-[#B03A00] border-amber-300" : "bg-slate-100 text-slate-700 border-slate-300"
+                    isPremium
+                      ? "bg-amber-100 text-[#B03A00] border-amber-300 hover:bg-amber-200"
+                      : "bg-[#F2A33A] text-[#0F2A43] border-[#F2A33A] hover:bg-[#e09129]"
                   }`}
                 >
                   <Flame className="w-3.5 h-3.5 text-[#F2A33A]" />
-                  <span>{isPremium ? "Paket Premium Aktif (Rp25rb/bln)" : "Upgrade ke Premium"}</span>
+                  <span>{isPremium ? `Premium Aktif s/d ${premiumExpiryLabel}` : "Upgrade ke Premium"}</span>
                 </button>
                 <button
                   type="button"
@@ -1726,6 +1840,111 @@ export default function ShiftBroApp() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL 3: UPGRADE / KELOLA PREMIUM (BAYAR via lynk.id)     */}
+      {/* ======================================================== */}
+      {showUpgradeModal && (
+        <div className="fixed inset-0 z-50 bg-[#0F2A43]/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full border border-[#E4E1D6] shadow-2xl p-6 space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-start justify-between pb-3 border-b border-[#E4E1D6]">
+              <div className="flex items-center gap-2.5">
+                <span className="w-9 h-9 rounded-xl bg-[#F2A33A] text-[#0F2A43] flex items-center justify-center font-bold">
+                  <Flame className="w-5 h-5" />
+                </span>
+                <div>
+                  <h3 className="text-sm font-black text-[#0F2A43]">ShiftBro Premium</h3>
+                  <p className="text-[11px] text-[#6B7280]">{PREMIUM_PRICE_LABEL}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowUpgradeModal(false)}
+                className="w-7 h-7 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-xs"
+              >
+                ✕
+              </button>
+            </div>
+
+            {isPremium ? (
+              <div className="space-y-3">
+                <div className="p-4 rounded-2xl bg-[#D7F0EA] border border-[#2C9B8A]/40 text-xs text-[#0F2A43]">
+                  <p className="font-bold">✅ Paket Premium Aktif</p>
+                  <p className="mt-1">
+                    Berlaku hingga <strong>{premiumExpiryLabel}</strong>.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDeactivatePremium}
+                  className="w-full py-2.5 rounded-xl border border-[#E4E1D6] text-xs font-bold text-[#6B7280] hover:bg-slate-50"
+                >
+                  Nonaktifkan (mode demo)
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <ul className="text-xs text-[#0F2A43] space-y-2">
+                  <li className="flex items-start gap-2">
+                    <Check className="w-4 h-4 text-[#2C9B8A] shrink-0 mt-0.5" />
+                    <span>
+                      <strong>Hitung Gaji Otomatis (Payroll)</strong> + download rekap .xlsx
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="w-4 h-4 text-[#2C9B8A] shrink-0 mt-0.5" />
+                    <span>
+                      <strong>Overtime Guard</strong> &amp; konfirmasi lembur 1-klik
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="w-4 h-4 text-[#2C9B8A] shrink-0 mt-0.5" />
+                    <span>
+                      <strong>Manajemen Tukar Shift Mandiri</strong>
+                    </span>
+                  </li>
+                </ul>
+
+                <a
+                  href={LYNK_PRO_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full bg-[#F2A33A] hover:bg-[#e09129] text-[#0F2A43] font-bold py-3 rounded-xl text-xs shadow-md flex items-center justify-center gap-1.5"
+                >
+                  <span>Bayar {PREMIUM_PRICE_LABEL} di lynk.id</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </a>
+
+                <form onSubmit={handleActivateLicense} className="space-y-2 pt-3 border-t border-[#E4E1D6]">
+                  <label className="block text-[11px] font-bold text-[#0F2A43]">
+                    Sudah bayar? Masukkan kode lisensi dari lynk.id:
+                  </label>
+                  <input
+                    type="text"
+                    value={licenseInput}
+                    onChange={(e) => setLicenseInput(e.target.value)}
+                    placeholder="Contoh: SHIFTBRO-PRO-XXXXXX"
+                    className="w-full bg-[#F4F2EA] border border-[#E4E1D6] rounded-xl px-3.5 py-2.5 text-xs font-mono font-semibold text-[#0F2A43] focus:outline-none focus:ring-2 focus:ring-[#F2A33A]"
+                  />
+                  {licenseError && (
+                    <p className="text-[11px] text-red-600 font-semibold flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      <span>{licenseError}</span>
+                    </p>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={licenseLoading}
+                    className="w-full bg-[#0F2A43] hover:bg-[#1E3E5C] disabled:opacity-60 text-white font-bold py-2.5 rounded-xl text-xs shadow-md"
+                  >
+                    {licenseLoading ? "Memverifikasi..." : "Aktivasi Kode Lisensi"}
+                  </button>
+                </form>
+              </div>
+            )}
           </div>
         </div>
       )}
